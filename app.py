@@ -50,9 +50,11 @@ def fetch_jp10y() -> dict | None:
         if len(df) >= 2:
             last = float(df.iloc[-1].iloc[10])
             prev = float(df.iloc[-2].iloc[10])
-            return {"value": last, "change": last - prev, "pct": (last - prev) / prev * 100}
+            date_str = str(df.iloc[-1].iloc[0])
+            return {"value": last, "change": last - prev, "pct": (last - prev) / prev * 100, "date": date_str}
         elif len(df) == 1:
-            return {"value": float(df.iloc[-1].iloc[10]), "change": None, "pct": None}
+            date_str = str(df.iloc[-1].iloc[0])
+            return {"value": float(df.iloc[-1].iloc[10]), "change": None, "pct": None, "date": date_str}
     except Exception:
         pass
     return None
@@ -62,9 +64,12 @@ def fetch_jp10y() -> dict | None:
 def fetch_market_data():
     results = {}
     yf_tickers = {name: ticker for name, ticker in TICKERS.items() if ticker is not None}
+    data_date = None
     try:
         raw = yf.download(list(yf_tickers.values()), period="2d", interval="1d", progress=False, auto_adjust=True)
         close = raw["Close"] if "Close" in raw.columns else raw
+        if hasattr(close.index, "date"):
+            data_date = str(close.index[-1].date())
         for name, ticker in yf_tickers.items():
             try:
                 prices = close[ticker].dropna()
@@ -72,9 +77,9 @@ def fetch_market_data():
                     prev, last = float(prices.iloc[-2]), float(prices.iloc[-1])
                     change = last - prev
                     pct = change / prev * 100
-                    results[name] = {"value": last, "change": change, "pct": pct}
+                    results[name] = {"value": last, "change": change, "pct": pct, "date": data_date}
                 elif len(prices) == 1:
-                    results[name] = {"value": float(prices.iloc[-1]), "change": None, "pct": None}
+                    results[name] = {"value": float(prices.iloc[-1]), "change": None, "pct": None, "date": data_date}
                 else:
                     results[name] = None
             except Exception:
@@ -109,6 +114,8 @@ def metric_card(name, info):
         st.metric(name, val_str, delta=delta_str)
     else:
         st.metric(name, val_str)
+    if info.get("date"):
+        st.caption(f"📅 {info['date']}")
 
 
 # ──────────────────────────────
