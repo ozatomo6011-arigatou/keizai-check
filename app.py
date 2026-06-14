@@ -144,47 +144,51 @@ def generate_comment(data: dict, api_key: str) -> str:
 
 
 # ──────────────────────────────
-# Excel記録
+# Google Sheets
 # ──────────────────────────────
-def save_to_excel(data: dict, comment: str, picks: str):
-    today = datetime.now().strftime("%Y-%m-%d")
+def get_gsheet():
+    creds_dict = dict(st.secrets["gcp_service_account"])
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+    import google.oauth2.service_account as sa
+    creds = sa.Credentials.from_service_account_info(
+        creds_dict,
+        scopes=["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"],
+    )
+    import gspread
+    gc = gspread.authorize(creds)
+    spreadsheet_id = st.secrets.get("SPREADSHEET_ID", "") or os.environ.get("SPREADSHEET_ID", "")
+    return gc.open_by_key(spreadsheet_id).sheet1
+
+
+def save_to_gsheet(data: dict, comment: str, picks: str):
+    ws = get_gsheet()
     headers = ["日付"] + list(TICKERS.keys()) + ["AIコメント", "気になる銘柄"]
-
-    if EXCEL_FILE.exists():
-        wb = load_workbook(EXCEL_FILE)
-        ws = wb.active
-    else:
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "経済日誌"
-        ws.append(headers)
-        header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-        header_font = Font(color="FFFFFF", bold=True)
-        for cell in ws[1]:
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center")
-
+    if ws.row_count == 0 or ws.cell(1, 1).value != "日付":
+        ws.insert_row(headers, 1)
+    today = datetime.now().strftime("%Y-%m-%d")
     row = [today]
     for name in TICKERS:
         info = data.get(name)
         row.append(round(info["value"], 4) if info else "N/A")
     row.append(comment)
     row.append(picks)
-    ws.append(row)
+    ws.append_row(row)
 
-    # 前日比で赤/緑色付け（値のみの列）
-    last_row = ws.max_row
-    for col_idx, name in enumerate(TICKERS.keys(), start=2):
-        info = data.get(name)
-        if info and info["pct"] is not None:
-            cell = ws.cell(row=last_row, column=col_idx)
-            if info["pct"] > 0:
-                cell.fill = PatternFill(start_color="C6EFCE", end_color="C6EFCE", fill_type="solid")
-            elif info["pct"] < 0:
-                cell.fill = PatternFill(start_color="FFC7CE", end_color="FFC7CE", fill_type="solid")
 
-    wb.save(EXCEL_FILE)
+def load_from_gsheet() -> pd.DataFrame | None:
+    try:
+        ws = get_gsheet()
+        records = ws.get_all_values()
+        if len(records) < 2:
+            return None
+        df = pd.DataFrame(records[1:], columns=records[0])
+        df = df.set_index("日付")
+        for col in df.columns:
+            if col not in ["AIコメント", "気になる銘柄"]:
+                df[col] = pd.to_numeric(df[col], errors="coerce")
+        return df
+    except Exception:
+        return None
 
 
 # ──────────────────────────────
@@ -273,46 +277,29 @@ picks_input = st.text_area(
 
 st.divider()
 
-# ──── セクション6: Excel記録ボタン
-st.subheader("📁 Excel に記録する")
-col1, col2 = st.columns([1, 3])
-with col1:
-    if st.button("💾 今日のデータを保存", type="primary"):
-        try:
-            save_to_excel(data, st.session_state.ai_comment, picks_input)
-            st.success(f"✅ 保存しました → {EXCEL_FILE.resolve()}")
-        except Exception as e:
-            st.error(f"保存エラー: {e}")
-with col2:
-    if EXCEL_FILE.exists():
-        with open(EXCEL_FILE, "rb") as f:
-            st.download_button(
-                "⬇️ Excelをダウンロード",
-                data=f,
-                file_name="経済日誌.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            )
+# ──── セクション6: 記録ボタン
+st.subheader("📁 今日のデータを記録する")
+if st.button("💾 Googleスプレッドシートに保存", type="primary"):
+    try:
+        save_to_gsheet(data, st.session_state.ai_comment, picks_input)
+        st.success("✅ 保存しました！Googleスプレッドシートに記録されました")
+    except Exception as e:
+        st.error(f"保存エラー: {e}")
 
 st.divider()
 
 # ──── セクション7: 過去グラフ
 st.subheader("📈 過去の推移グラフ")
-if EXCEL_FILE.exists():
-    try:
-        df = pd.read_excel(EXCEL_FILE, index_col=0, parse_dates=True)
-        if len(df) >= 2:
-            chart_options = [c for c in df.columns if c not in ["AIコメント", "気になる銘柄"]]
-            selected = st.multiselect("表示する項目を選択", chart_options, default=chart_options[:3])
-            if selected:
-                import plotly.graph_objects as go
-                fig = go.Figure()
-                for col in selected:
-                    fig.add_trace(go.Scatter(x=df.index, y=df[col], name=col, mode="lines+markers"))
-                fig.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
-                st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("グラフは2日分以上のデータが貯まると表示されます")
-    except Exception as e:
-        st.warning(f"グラフ表示エラー: {e}")
+df = load_from_gsheet()
+if df is not None and len(df) >= 2:
+    chart_options = [c for c in df.columns if c not in ["AIコメント", "気になる銘柄"]]
+    selected = st.multiselect("表示する項目を選択", chart_options, default=chart_options[:3])
+    if selected:
+        import plotly.graph_objects as go
+        fig = go.Figure()
+        for col in selected:
+            fig.add_trace(go.Scatter(x=df.index, y=df[col], name=col, mode="lines+markers"))
+        fig.update_layout(height=400, margin=dict(l=0, r=0, t=30, b=0))
+        st.plotly_chart(fig, use_container_width=True)
 else:
-    st.info("まだデータがありません。「Excelに保存」ボタンで記録を始めましょう！")
+    st.info("まだデータがありません。「Googleスプレッドシートに保存」ボタンで記録を始めましょう！")
