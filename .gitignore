@@ -1,0 +1,4 @@
+.env
+経済日誌.xlsx
+__pycache__/
+*.pyc
