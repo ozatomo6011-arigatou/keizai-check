@@ -193,14 +193,16 @@ def save_to_excel(data: dict, comment: str, picks: str):
 st.title("📊 毎日の経済チェック")
 st.caption(f"最終更新: {datetime.now().strftime('%Y年%m月%d日 %H:%M')}")
 
-# サイドバー：APIキー設定
+# APIキー取得（Streamlit Secrets → 環境変数の順で読み込む）
+api_key = st.secrets.get("ANTHROPIC_API_KEY", "") or os.environ.get("ANTHROPIC_API_KEY", "")
+
+# サイドバー
 with st.sidebar:
     st.header("⚙️ 設定")
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-    if not api_key:
-        api_key = st.text_input("Anthropic APIキー", type="password", help="console.anthropic.comで取得")
+    if api_key:
+        st.success("AIコメント：利用可能")
     else:
-        st.success("APIキー：設定済み")
+        st.warning("APIキー未設定")
     st.divider()
     if st.button("🔄 データを再取得"):
         st.cache_data.clear()
