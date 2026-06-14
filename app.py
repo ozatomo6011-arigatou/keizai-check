@@ -246,21 +246,28 @@ st.divider()
 # ──── セクション4: AIコメント
 st.subheader("🤖 今日の市場コメント（AI自動生成）")
 
-if "ai_comment" not in st.session_state:
-    st.session_state.ai_comment = ""
+today_str = datetime.now().strftime("%Y-%m-%d")
 
-if st.button("💬 AIコメントを生成", type="primary", disabled=not api_key):
-    if not api_key:
-        st.warning("サイドバーにAPIキーを入力してください")
+# 今日のコメントをスプレッドシートから読み込む
+if "ai_comment" not in st.session_state:
+    df_existing = load_from_gsheet()
+    if df_existing is not None and today_str in df_existing.index:
+        saved = df_existing.loc[today_str, "AIコメント"]
+        st.session_state.ai_comment = saved if isinstance(saved, str) else ""
     else:
-        with st.spinner("Claudeが市場を分析中..."):
-            try:
-                st.session_state.ai_comment = generate_comment(data, api_key)
-            except Exception as e:
-                st.error(f"コメント生成エラー: {e}")
+        st.session_state.ai_comment = ""
 
 if st.session_state.ai_comment:
     st.info(st.session_state.ai_comment)
+    st.caption("※ 今日はすでに生成済みです")
+else:
+    if st.button("💬 AIコメントを生成", type="primary", disabled=not api_key):
+        with st.spinner("Claudeが市場を分析中..."):
+            try:
+                st.session_state.ai_comment = generate_comment(data, api_key)
+                st.rerun()
+            except Exception as e:
+                st.error(f"コメント生成エラー: {e}")
 
 st.divider()
 
