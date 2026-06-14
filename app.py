@@ -161,11 +161,13 @@ def get_gsheet():
 
 
 def save_to_gsheet(data: dict, comment: str, picks: str):
+    from datetime import timezone, timedelta
+    JST = timezone(timedelta(hours=9))
     ws = get_gsheet()
     headers = ["日付"] + list(TICKERS.keys()) + ["AIコメント", "気になる銘柄"]
     if ws.row_count == 0 or ws.cell(1, 1).value != "日付":
         ws.insert_row(headers, 1)
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(JST).strftime("%Y-%m-%d")
     row = [today]
     for name in TICKERS:
         info = data.get(name)
@@ -246,7 +248,9 @@ st.divider()
 # ──── セクション4: AIコメント
 st.subheader("🤖 今日の市場コメント（AI自動生成）")
 
-today_str = datetime.now().strftime("%Y-%m-%d")
+from datetime import timezone, timedelta
+JST = timezone(timedelta(hours=9))
+today_str = datetime.now(JST).strftime("%Y-%m-%d")
 
 # 今日のコメントをスプレッドシートから読み込む
 if "ai_comment" not in st.session_state:
