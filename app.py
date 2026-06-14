@@ -167,15 +167,17 @@ def get_gsheet():
     return gc.open_by_key(spreadsheet_id).sheet1
 
 
-def save_to_gsheet(data: dict, comment: str, picks: str):
-    from datetime import timezone, timedelta
-    JST = timezone(timedelta(hours=9))
-    now_jst = datetime.now(JST)
-    today = (now_jst if now_jst.hour >= 9 else now_jst - timedelta(days=1)).strftime("%Y-%m-%d")
+def save_to_gsheet(data: dict, comment: str, picks: str, today: str):
     ws = get_gsheet()
     headers = ["日付"] + list(TICKERS.keys()) + ["AIコメント", "気になる銘柄"]
-    if ws.row_count == 0 or ws.cell(1, 1).value != "日付":
+    all_values = ws.get_all_values()
+    if not all_values or all_values[0][0] != "日付":
         ws.insert_row(headers, 1)
+        all_values = ws.get_all_values()
+    # 今日の日付がすでにあればはじく
+    existing_dates = [r[0] for r in all_values[1:]]
+    if today in existing_dates:
+        return False
     row = [today]
     for name in TICKERS:
         info = data.get(name)
@@ -183,6 +185,7 @@ def save_to_gsheet(data: dict, comment: str, picks: str):
     row.append(comment)
     row.append(picks)
     ws.append_row(row)
+    return True
 
 
 def load_from_gsheet() -> pd.DataFrame | None:
@@ -301,8 +304,11 @@ st.divider()
 st.subheader("📁 今日のデータを記録する")
 if st.button("💾 Googleスプレッドシートに保存", type="primary"):
     try:
-        save_to_gsheet(data, st.session_state.ai_comment, picks_input)
-        st.success("✅ 保存しました！Googleスプレッドシートに記録されました")
+        saved = save_to_gsheet(data, st.session_state.ai_comment, picks_input, today_str)
+        if saved:
+            st.success("✅ 保存しました！")
+        else:
+            st.warning("今日はすでに保存済みです")
     except Exception as e:
         st.error(f"保存エラー: {e}")
 
