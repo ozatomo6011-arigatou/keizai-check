@@ -222,9 +222,15 @@ def save_to_gsheet(data: dict, comment: str, picks: str, today: str):
         headers = desired_headers
         all_values = [desired_headers] + reordered_rows
 
-    # 今日の日付がすでにあればはじく
+    # 今日の日付がすでにあれば、AIコメントが未記入の場合のみ追記する
     existing_dates = [r[0] for r in all_values[1:]]
     if today in existing_dates:
+        row_index = existing_dates.index(today) + 2  # 1行目はヘッダーなので+2
+        comment_col = desired_headers.index("AIコメント") + 1
+        existing_comment = all_values[existing_dates.index(today) + 1][comment_col - 1]
+        if not existing_comment and comment:
+            ws.update_cell(row_index, comment_col, comment)
+            return True
         return False
     row = [today]
     for name in TICKERS:
