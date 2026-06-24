@@ -8,6 +8,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill, Font, Alignment
 from pathlib import Path
 import os
+import re
 import requests
 import io
 from dotenv import load_dotenv
@@ -23,9 +24,10 @@ st.set_page_config(
 EXCEL_FILE = Path("経済日誌.xlsx")
 
 TICKERS = {
+    "日経平均":       "^N225",
+    "ダウ平均":       "^DJI",
     "S&P500":        "^GSPC",
     "NASDAQ":        "^IXIC",
-    "ダウ平均":       "^DJI",
     "SOX（半導体）":  "^SOX",
     "ドル円":         "USDJPY=X",
     "米国10年債(%)":  "^TNX",
@@ -136,18 +138,51 @@ def generate_comment(data: dict, api_key: str) -> str:
 
 {market_text}
 
-これを見て、初心者の経済学習者向けに以下をまとめてください（日本語・200字以内）：
-1. 市場全体のムード（リスクオン/リスクオフ）
-2. 注目すべき動きとその理由（推測でOK）
-3. メンター面談で聞くと良さそうなポイント1つ"""
+これを見て、初心者の経済学習者向けに、必ず次の見出しをそのまま使った形式で日本語で出力してください。
+
+【まとめ】
+（市場全体のムード：リスクオン/リスクオフを100字程度で）
+
+【注目ポイント】
+（注目すべき動きとその理由を100字程度で、推測でOK）
+
+【メンターへの質問】
+（メンター面談で聞くと良さそうなポイントを1つ、1文で）
+
+【質問への回答】
+（上記の質問に対する、あなた自身の回答・考え方を150字程度で。ここだけは小学生にもわかるレベルまでやさしい言葉で、難しい専門用語を避けて説明してください）"""
 
     client = anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=400,
+        max_tokens=600,
         messages=[{"role": "user", "content": prompt}],
     )
     return message.content[0].text
+
+
+def parse_ai_comment(text: str) -> dict:
+    """AIコメントを見出しごとに分割する。形式に従っていない場合はsummaryに全文を入れる。"""
+    sections = {"summary": "", "question": "", "answer": ""}
+    heading_map = {
+        "まとめ": "summary",
+        "注目ポイント": "summary",
+        "メンターへの質問": "question",
+        "質問への回答": "answer",
+    }
+    parts = re.split(r"【(.+?)】", text)
+    if len(parts) <= 1:
+        sections["summary"] = text.strip()
+        return sections
+    for i in range(1, len(parts), 2):
+        heading = parts[i].strip()
+        content = parts[i + 1].strip() if i + 1 < len(parts) else ""
+        key = heading_map.get(heading)
+        if key == "summary" and sections["summary"]:
+            sections["summary"] += "\n" + content
+        elif key:
+            sections[key] = content
+    return sections
 
 
 # ──────────────────────────────
@@ -169,11 +204,24 @@ def get_gsheet():
 
 def save_to_gsheet(data: dict, comment: str, picks: str, today: str):
     ws = get_gsheet()
-    headers = ["日付"] + list(TICKERS.keys()) + ["AIコメント", "気になる銘柄"]
+    desired_headers = ["日付"] + list(TICKERS.keys()) + ["AIコメント", "気になる銘柄"]
     all_values = ws.get_all_values()
     if not all_values or all_values[0][0] != "日付":
-        ws.insert_row(headers, 1)
+        ws.insert_row(desired_headers, 1)
         all_values = ws.get_all_values()
+
+    headers = all_values[0]
+    if headers != desired_headers:
+        # 列の並び順が変わった場合、既存データも新しい並び順に揃え直す
+        reordered_rows = []
+        for r in all_values[1:]:
+            row_dict = dict(zip(headers, r))
+            reordered_rows.append([row_dict.get(h, "") for h in desired_headers])
+        ws.clear()
+        ws.update("A1", [desired_headers] + reordered_rows)
+        headers = desired_headers
+        all_values = [desired_headers] + reordered_rows
+
     # 今日の日付がすでにあればはじく
     existing_dates = [r[0] for r in all_values[1:]]
     if today in existing_dates:
@@ -211,7 +259,11 @@ st.title("📊 毎日の経済チェック")
 st.caption(f"最終更新: {datetime.now().strftime('%Y年%m月%d日 %H:%M')}")
 
 # APIキー取得（Streamlit Secrets → 環境変数の順で読み込む）
-api_key = st.secrets.get("ANTHROPIC_API_KEY", "") or os.environ.get("ANTHROPIC_API_KEY", "")
+try:
+    api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+except Exception:
+    api_key = ""
+api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
 
 # サイドバー
 with st.sidebar:
@@ -229,10 +281,10 @@ with st.sidebar:
 with st.spinner("市場データを取得中..."):
     data = fetch_market_data()
 
-# ──── セクション1: 米主要指数
-st.subheader("🇺🇸 米主要指数")
-cols = st.columns(4)
-for i, name in enumerate(["S&P500", "NASDAQ", "ダウ平均", "SOX（半導体）"]):
+# ──── セクション1: 日米主要指数
+st.subheader("📈 日米主要指数")
+cols = st.columns(5)
+for i, name in enumerate(["日経平均", "ダウ平均", "S&P500", "NASDAQ", "SOX（半導体）"]):
     with cols[i]:
         metric_card(name, data.get(name))
 
@@ -274,7 +326,16 @@ if "ai_comment" not in st.session_state:
         st.session_state.ai_comment = ""
 
 if st.session_state.ai_comment:
-    st.info(st.session_state.ai_comment)
+    parsed = parse_ai_comment(st.session_state.ai_comment)
+    if parsed["summary"]:
+        st.info(parsed["summary"])
+    if parsed["question"]:
+        st.markdown(f"**🙋 メンターへの質問：** {parsed['question']}")
+        if parsed["answer"]:
+            with st.expander("💡 回答を見る"):
+                st.write(parsed["answer"])
+    else:
+        st.info(st.session_state.ai_comment)
     st.caption("※ 今日はすでに生成済みです")
 else:
     if st.button("💬 AIコメントを生成", type="primary", disabled=not api_key):
