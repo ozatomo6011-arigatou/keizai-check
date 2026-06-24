@@ -261,7 +261,7 @@ def load_from_gsheet() -> pd.DataFrame | None:
 # ──────────────────────────────
 # UI
 # ──────────────────────────────
-st.title("📊 毎日の経済チェック")
+st.markdown("##### 📊 毎日の経済チェック")
 st.caption(f"最終更新: {datetime.now().strftime('%Y年%m月%d日 %H:%M')}")
 
 # APIキー取得（Streamlit Secrets → 環境変数の順で読み込む）
@@ -287,26 +287,33 @@ with st.sidebar:
 with st.spinner("市場データを取得中..."):
     data = fetch_market_data()
 
+# ──── 指標カードのフォントを縮小
+st.markdown("""
+<style>
+div[data-testid="stMetricValue"] { font-size: 1.1rem; }
+div[data-testid="stMetricLabel"] { font-size: 0.75rem; }
+div[data-testid="stMetricDelta"] { font-size: 0.75rem; }
+div[data-testid="stAlertContentInfo"] p,
+div[data-testid="stExpander"] p { font-size: 0.85rem; }
+</style>
+""", unsafe_allow_html=True)
+
 # ──── セクション1: 日米主要指数
-st.subheader("📈 日米主要指数")
+st.markdown("###### 📈 日米主要指数")
 cols = st.columns(5)
 for i, name in enumerate(["日経平均", "ダウ平均", "S&P500", "NASDAQ", "SOX（半導体）"]):
     with cols[i]:
         metric_card(name, data.get(name))
 
-st.divider()
-
 # ──── セクション2: 為替・債券
-st.subheader("💱 為替・債券利回り")
+st.markdown("###### 💱 為替・債券利回り")
 cols = st.columns(3)
 for i, name in enumerate(["ドル円", "米国10年債(%)", "日本10年債(%)"]):
     with cols[i]:
         metric_card(name, data.get(name))
 
-st.divider()
-
 # ──── セクション3: 資金逃避先
-st.subheader("🛡️ 資金逃避先（有事の動き）")
+st.markdown("###### 🛡️ 資金逃避先（有事の動き）")
 cols = st.columns(3)
 for i, name in enumerate(["原油(WTI)", "金", "ビットコイン"]):
     with cols[i]:
@@ -315,7 +322,7 @@ for i, name in enumerate(["原油(WTI)", "金", "ビットコイン"]):
 st.divider()
 
 # ──── セクション4: AIコメント
-st.subheader("🤖 今日の市場コメント（AI自動生成）")
+st.markdown("###### 🤖 今日の市場コメント（AI自動生成）")
 
 from datetime import timezone, timedelta
 JST = timezone(timedelta(hours=9))
@@ -355,7 +362,7 @@ else:
 st.divider()
 
 # ──── セクション5: 気になる銘柄
-st.subheader("📌 気になる銘柄（メンター面談用）")
+st.markdown("###### 📌 気になる銘柄（メンター面談用）")
 st.caption("メンターとの面談で話したい銘柄やテーマを入力してください")
 
 picks_input = st.text_area(
@@ -368,7 +375,7 @@ picks_input = st.text_area(
 st.divider()
 
 # ──── セクション6: 記録ボタン
-st.subheader("📁 今日のデータを記録する")
+st.markdown("###### 📁 今日のデータを記録する")
 if st.button("💾 Googleスプレッドシートに保存", type="primary"):
     try:
         saved = save_to_gsheet(data, st.session_state.ai_comment, picks_input, today_str)
@@ -382,7 +389,7 @@ if st.button("💾 Googleスプレッドシートに保存", type="primary"):
 st.divider()
 
 # ──── セクション7: 過去グラフ
-st.subheader("📈 過去の推移グラフ")
+st.markdown("###### 📈 過去の推移グラフ")
 df = load_from_gsheet()
 if df is not None and len(df) >= 2:
     chart_options = [c for c in df.columns if c not in ["AIコメント", "気になる銘柄"]]
