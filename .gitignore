@@ -2,3 +2,5 @@
 経済日誌.xlsx
 __pycache__/
 *.pyc
+*.log
+note_screenshot.png

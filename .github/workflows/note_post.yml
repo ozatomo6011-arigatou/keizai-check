@@ -1,0 +1,28 @@
+name: Daily note post
+
+on:
+  schedule:
+    - cron: "30 0 * * *"  # 9:30 JST
+  workflow_dispatch: {}
+
+jobs:
+  note-post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Run note post script
+        env:
+          APP_URL: https://keizai-check-znavwoheaq6z9je9bjqu5k.streamlit.app/
+          ICLOUD_EMAIL: ${{ secrets.ICLOUD_EMAIL }}
+          ICLOUD_APP_PASSWORD: ${{ secrets.ICLOUD_APP_PASSWORD }}
+        run: python scripts/note_post.py

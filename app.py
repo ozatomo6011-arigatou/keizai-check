@@ -146,7 +146,7 @@ def generate_comment(data: dict, api_key: str) -> str:
 【注目ポイント】
 （注目すべき動きとその理由を100字程度で、推測でOK）
 
-【メンターへの質問】
+【今日の市場まとめを読んで疑問に思ったこと】
 （メンター面談で聞くと良さそうなポイントを1つ、1文で）
 
 【質問への回答】
@@ -167,7 +167,7 @@ def parse_ai_comment(text: str) -> dict:
     heading_map = {
         "まとめ": "summary",
         "注目ポイント": "summary",
-        "メンターへの質問": "question",
+        "今日の市場まとめを読んで疑問に思ったこと": "question",
         "質問への回答": "answer",
     }
     parts = re.split(r"【(.+?)】", text)
@@ -343,13 +343,22 @@ if st.session_state.ai_comment:
     if parsed["summary"]:
         st.info(parsed["summary"])
     if parsed["question"]:
-        st.markdown(f"**🙋 メンターへの質問：** {parsed['question']}")
+        st.markdown(f"**🙋 今日の市場まとめを読んで疑問に思ったこと：** {parsed['question']}")
         if parsed["answer"]:
             with st.expander("💡 回答を見る"):
                 st.write(parsed["answer"])
     else:
         st.info(st.session_state.ai_comment)
     st.caption("※ 今日はすでに生成済みです")
+
+    note_text = parsed["summary"]
+    if parsed["question"]:
+        note_text += f"\n\n🙋 今日の市場まとめを読んで疑問に思ったこと\n{parsed['question']}"
+        if parsed["answer"]:
+            note_text += f"\n\n💡 回答\n{parsed['answer']}"
+    with st.expander("📝 note投稿用テキスト（コピーして使う）"):
+        st.caption("上の画面全体をスクショして画像に、このテキストを本文に貼り付けてください")
+        st.code(note_text, language=None)
 else:
     if st.button("💬 AIコメントを生成", type="primary", disabled=not api_key):
         with st.spinner("Claudeが市場を分析中..."):
