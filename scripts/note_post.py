@@ -60,6 +60,18 @@ def capture() -> str:
         except Exception:
             pass
 
+        # Streamlitの本体は独自のスクロール領域(stAppViewContainer等)を持つため、
+        # window.scrollTo ではなく該当要素のscrollTopを直接リセットする
+        reset_scroll_js = """
+            document.querySelectorAll('*').forEach(el => {
+                if (el.scrollTop > 0) el.scrollTop = 0;
+            });
+        """
+        app_frame.evaluate(reset_scroll_js)
+        page.evaluate(reset_scroll_js)
+        page.evaluate("window.scrollTo(0, 0)")
+        page.wait_for_timeout(500)
+
         comment_box = comment_heading.first.bounding_box() if comment_heading.count() else None
         scroll_y = page.evaluate("window.scrollY")
         absolute_y = comment_box["y"] + scroll_y if comment_box else None
