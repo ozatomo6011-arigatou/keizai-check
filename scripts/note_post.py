@@ -53,6 +53,9 @@ def capture() -> str:
             save_button.first.click()
             page.wait_for_timeout(3000)
 
+        page.evaluate("window.scrollTo(0, 0)")
+        page.wait_for_timeout(500)
+
         comment_heading = app_frame.locator("text=今日の市場コメント")
         comment_box = comment_heading.first.bounding_box() if comment_heading.count() else None
         if comment_box and comment_box["y"] > 50:
