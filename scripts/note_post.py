@@ -20,7 +20,16 @@ def capture() -> str:
         page = browser.new_page(viewport={"width": 1280, "height": 1600})
         page.goto(APP_URL, wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(5000)
-        page.add_style_tag(content="""
+
+        # Streamlit Cloudは実際のアプリ本体を内部のiframeで配信しているため、
+        # そのフレームを探して操作・スタイル適用する必要がある
+        app_frame = page.main_frame
+        for f in page.frames:
+            if f.locator("[data-testid]").count() > 10:
+                app_frame = f
+                break
+
+        app_frame.add_style_tag(content="""
             [data-testid='stSidebar'] { display: none !important; }
             div[data-testid="stMetricValue"] { font-size: 1.8rem !important; }
             div[data-testid="stMetricLabel"] { font-size: 1.1rem !important; }
@@ -29,9 +38,9 @@ def capture() -> str:
             div[data-testid="stCaptionContainer"] p { font-size: 1rem !important; }
         """)
 
-        expander = page.locator("text=note投稿用テキスト")
+        expander = app_frame.locator("text=note投稿用テキスト")
 
-        gen_button = page.locator("button", has_text="AIコメントを生成")
+        gen_button = app_frame.locator("button", has_text="AIコメントを生成")
         if gen_button.count() and gen_button.first.is_visible():
             gen_button.first.click()
             try:
@@ -39,12 +48,12 @@ def capture() -> str:
             except Exception:
                 pass
 
-        save_button = page.locator("button", has_text="Googleスプレッドシートに保存")
+        save_button = app_frame.locator("button", has_text="Googleスプレッドシートに保存")
         if save_button.count() and save_button.first.is_visible():
             save_button.first.click()
             page.wait_for_timeout(3000)
 
-        comment_heading = page.locator("text=今日の市場コメント")
+        comment_heading = app_frame.locator("text=今日の市場コメント")
         comment_box = comment_heading.first.bounding_box() if comment_heading.count() else None
         if comment_box:
             page.screenshot(
@@ -58,7 +67,7 @@ def capture() -> str:
         if expander.count():
             expander.first.click()
             page.wait_for_timeout(1000)
-            code_block = page.locator("pre").last
+            code_block = app_frame.locator("pre").last
             if code_block.count():
                 note_text = code_block.inner_text()
 
