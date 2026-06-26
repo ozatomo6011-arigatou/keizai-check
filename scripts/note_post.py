@@ -7,6 +7,7 @@ from email.mime.image import MIMEImage
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+from PIL import Image
 
 APP_URL = os.environ["APP_URL"]
 ICLOUD_EMAIL = os.environ["ICLOUD_EMAIL"]
@@ -59,19 +60,19 @@ def capture() -> str:
         except Exception:
             pass
 
-        page.evaluate("window.scrollTo(0, 0)")
-        page.wait_for_timeout(800)
-
         comment_box = comment_heading.first.bounding_box() if comment_heading.count() else None
-        print("DEBUG comment_heading count:", comment_heading.count(), "box:", comment_box)
-        if comment_box and comment_box["y"] > 50:
-            page.screenshot(
-                path=str(SCREENSHOT_PATH),
-                clip={"x": 0, "y": 0, "width": 1280, "height": comment_box["y"]},
-            )
+        scroll_y = page.evaluate("window.scrollY")
+        absolute_y = comment_box["y"] + scroll_y if comment_box else None
+        print("DEBUG comment_heading count:", comment_heading.count(), "box:", comment_box, "scroll_y:", scroll_y, "absolute_y:", absolute_y)
+
+        page.screenshot(path=str(SCREENSHOT_PATH), full_page=True)
+
+        if absolute_y and absolute_y > 50:
+            img = Image.open(SCREENSHOT_PATH)
+            cropped = img.crop((0, 0, img.width, int(absolute_y)))
+            cropped.save(SCREENSHOT_PATH)
         else:
-            print("DEBUG falling back to full_page screenshot")
-            page.screenshot(path=str(SCREENSHOT_PATH), full_page=True)
+            print("DEBUG could not crop, keeping full_page screenshot")
 
         note_text = ""
         if expander.count():

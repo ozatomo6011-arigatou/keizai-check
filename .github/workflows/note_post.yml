@@ -17,7 +17,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install playwright
+          pip install playwright Pillow
           playwright install --with-deps chromium
 
       - name: Run note post script
