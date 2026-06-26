@@ -20,15 +20,18 @@ def capture() -> str:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 1280, "height": 1600})
         page.goto(APP_URL, wait_until="networkidle", timeout=60000)
-        page.wait_for_timeout(5000)
+        page.wait_for_timeout(8000)
+        try:
+            page.wait_for_load_state("networkidle", timeout=15000)
+        except Exception:
+            pass
 
         # Streamlit Cloudは実際のアプリ本体を内部のiframeで配信しているため、
         # そのフレームを探して操作・スタイル適用する必要がある
-        app_frame = page.main_frame
-        for f in page.frames:
-            if f.locator("[data-testid]").count() > 10:
-                app_frame = f
-                break
+        # 起床直後は一時的に複数フレームが存在することがあるため、testid要素が
+        # 最も多い(=最終的に表示される)フレームを選ぶ
+        app_frame = max(page.frames, key=lambda f: f.locator("[data-testid]").count())
+        print("DEBUG chosen frame url:", app_frame.url, "testid count:", app_frame.locator("[data-testid]").count())
 
         app_frame.add_style_tag(content="""
             [data-testid='stSidebar'] { display: none !important; }
