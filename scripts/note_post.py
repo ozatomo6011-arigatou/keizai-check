@@ -18,7 +18,7 @@ SCREENSHOT_PATH = Path("note_screenshot.png")
 def capture() -> str:
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 700, "height": 1800})
+        page = browser.new_page(viewport={"width": 420, "height": 2200})
         page.goto(APP_URL, wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(8000)
         try:
