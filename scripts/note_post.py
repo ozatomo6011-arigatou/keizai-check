@@ -20,7 +20,14 @@ def capture() -> str:
         page = browser.new_page(viewport={"width": 1280, "height": 1600})
         page.goto(APP_URL, wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(5000)
-        page.add_style_tag(content="[data-testid='stSidebar'] { display: none !important; }")
+        page.add_style_tag(content="""
+            [data-testid='stSidebar'] { display: none !important; }
+            div[data-testid="stMetricValue"] { font-size: 1.8rem !important; }
+            div[data-testid="stMetricLabel"] { font-size: 1.1rem !important; }
+            div[data-testid="stMetricDelta"] { font-size: 1.1rem !important; }
+            h5, h6 { font-size: 1.4rem !important; }
+            div[data-testid="stCaptionContainer"] p { font-size: 1rem !important; }
+        """)
 
         expander = page.locator("text=note投稿用テキスト")
 
