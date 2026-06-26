@@ -322,7 +322,7 @@ for i, name in enumerate(["原油(WTI)", "金", "ビットコイン"]):
 st.divider()
 
 # ──── セクション4: AIコメント
-st.markdown("###### 🤖 今日の市場コメント")
+st.markdown("###### 🤖 今日の市場まとめ")
 
 from datetime import timezone, timedelta
 JST = timezone(timedelta(hours=9))
@@ -351,7 +351,7 @@ if st.session_state.ai_comment:
         st.info(st.session_state.ai_comment)
     st.caption("※ 今日はすでに生成済みです")
 
-    note_text = "🤖 今日の市場コメント\n\n" + parsed["summary"]
+    note_text = "🤖 今日の市場まとめ\n\n" + parsed["summary"]
     if parsed["question"]:
         note_text += f"\n\n🙋 今日の市場まとめを読んで疑問に思ったこと\n{parsed['question']}"
         if parsed["answer"]:

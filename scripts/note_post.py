@@ -58,7 +58,7 @@ def capture() -> str:
             save_button.first.click()
             page.wait_for_timeout(3000)
 
-        comment_heading = app_frame.locator("text=今日の市場コメント")
+        comment_heading = app_frame.get_by_role("heading", name="今日の市場まとめ")
         try:
             comment_heading.first.wait_for(state="visible", timeout=30000)
         except Exception:
