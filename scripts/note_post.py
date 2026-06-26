@@ -39,7 +39,7 @@ def capture() -> str:
             [data-testid="stMetricLabel"] p { font-size: 1.3rem !important; font-weight: 600 !important; }
             [data-testid="stMetricDelta"] { font-size: 1.2rem !important; }
             div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; }
-            div[data-testid="stColumn"] { min-width: 45% !important; flex: 1 1 45% !important; width: 45% !important; }
+            div[data-testid="stColumn"] { min-width: 30% !important; flex: 1 1 30% !important; width: 30% !important; }
             h5 { font-size: 2rem !important; }
             h6 { font-size: 1.5rem !important; }
             div[data-testid="stCaptionContainer"] p { font-size: 1rem !important; }
