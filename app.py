@@ -351,7 +351,7 @@ if st.session_state.ai_comment:
         st.info(st.session_state.ai_comment)
     st.caption("※ 今日はすでに生成済みです")
 
-    note_text = parsed["summary"]
+    note_text = "🤖 今日の市場コメント（AI自動生成）\n\n" + parsed["summary"]
     if parsed["question"]:
         note_text += f"\n\n🙋 今日の市場まとめを読んで疑問に思ったこと\n{parsed['question']}"
         if parsed["answer"]:
