@@ -55,7 +55,7 @@ def capture() -> str:
 
         comment_heading = app_frame.locator("text=今日の市場コメント")
         comment_box = comment_heading.first.bounding_box() if comment_heading.count() else None
-        if comment_box:
+        if comment_box and comment_box["y"] > 50:
             page.screenshot(
                 path=str(SCREENSHOT_PATH),
                 clip={"x": 0, "y": 0, "width": 1280, "height": comment_box["y"]},
