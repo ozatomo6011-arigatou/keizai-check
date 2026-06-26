@@ -18,7 +18,7 @@ SCREENSHOT_PATH = Path("note_screenshot.png")
 def capture() -> str:
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 420, "height": 2200})
+        page = browser.new_page(viewport={"width": 620, "height": 2200})
         page.goto(APP_URL, wait_until="networkidle", timeout=60000)
         page.wait_for_timeout(8000)
         try:
@@ -35,12 +35,14 @@ def capture() -> str:
 
         app_frame.add_style_tag(content="""
             [data-testid='stSidebar'] { display: none !important; }
-            div[data-testid="stMetricValue"] { font-size: 2.4rem !important; }
-            div[data-testid="stMetricLabel"] { font-size: 1.4rem !important; }
-            div[data-testid="stMetricDelta"] { font-size: 1.4rem !important; }
-            h5 { font-size: 2.4rem !important; }
-            h6 { font-size: 1.8rem !important; }
-            div[data-testid="stCaptionContainer"] p { font-size: 1.3rem !important; }
+            div[data-testid="stMetricValue"] { font-size: 1.7rem !important; }
+            div[data-testid="stMetricLabel"] { font-size: 1.05rem !important; }
+            div[data-testid="stMetricDelta"] { font-size: 1.05rem !important; }
+            div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; }
+            div[data-testid="stColumn"] { min-width: 45% !important; flex: 1 1 45% !important; width: 45% !important; }
+            h5 { font-size: 2rem !important; }
+            h6 { font-size: 1.5rem !important; }
+            div[data-testid="stCaptionContainer"] p { font-size: 1rem !important; }
         """)
 
         expander = app_frame.locator("text=note投稿用テキスト")
