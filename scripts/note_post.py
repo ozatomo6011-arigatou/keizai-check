@@ -35,9 +35,9 @@ def capture() -> str:
 
         app_frame.add_style_tag(content="""
             [data-testid='stSidebar'] { display: none !important; }
-            div[data-testid="stMetricValue"] { font-size: 1.7rem !important; }
-            div[data-testid="stMetricLabel"] { font-size: 1.05rem !important; }
-            div[data-testid="stMetricDelta"] { font-size: 1.05rem !important; }
+            div[data-testid="stMetricValue"] { font-size: 2rem !important; }
+            div[data-testid="stMetricLabel"] { font-size: 1.3rem !important; font-weight: 600 !important; }
+            div[data-testid="stMetricDelta"] { font-size: 1.2rem !important; }
             div[data-testid="stHorizontalBlock"] { flex-wrap: wrap !important; }
             div[data-testid="stColumn"] { min-width: 45% !important; flex: 1 1 45% !important; width: 45% !important; }
             h5 { font-size: 2rem !important; }
