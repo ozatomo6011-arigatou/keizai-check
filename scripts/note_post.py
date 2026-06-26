@@ -53,17 +53,24 @@ def capture() -> str:
             save_button.first.click()
             page.wait_for_timeout(3000)
 
-        page.evaluate("window.scrollTo(0, 0)")
-        page.wait_for_timeout(500)
-
         comment_heading = app_frame.locator("text=今日の市場コメント")
+        try:
+            comment_heading.first.wait_for(state="visible", timeout=30000)
+        except Exception:
+            pass
+
+        page.evaluate("window.scrollTo(0, 0)")
+        page.wait_for_timeout(800)
+
         comment_box = comment_heading.first.bounding_box() if comment_heading.count() else None
+        print("DEBUG comment_heading count:", comment_heading.count(), "box:", comment_box)
         if comment_box and comment_box["y"] > 50:
             page.screenshot(
                 path=str(SCREENSHOT_PATH),
                 clip={"x": 0, "y": 0, "width": 1280, "height": comment_box["y"]},
             )
         else:
+            print("DEBUG falling back to full_page screenshot")
             page.screenshot(path=str(SCREENSHOT_PATH), full_page=True)
 
         note_text = ""
