@@ -38,7 +38,8 @@ def capture() -> str:
             div[data-testid="stMetricValue"] { font-size: 1.8rem !important; }
             div[data-testid="stMetricLabel"] { font-size: 1.1rem !important; }
             div[data-testid="stMetricDelta"] { font-size: 1.1rem !important; }
-            h5, h6 { font-size: 1.4rem !important; }
+            h5 { font-size: 2rem !important; }
+            h6 { font-size: 1.4rem !important; }
             div[data-testid="stCaptionContainer"] p { font-size: 1rem !important; }
         """)
 
