@@ -125,14 +125,19 @@ def fetch_market_data():
 
     # 銘柄ごとにYahoo側のデータ配信が遅れて日付がズレることがあるため、
     # 他の銘柄より明らかに古い日付のものだけ個別に再取得する
-    valid_dates = [r["date"] for r in results.values() if r and r.get("date")]
+    # (ビットコインは土日も動くため、平日のみ動く指標の判定基準には使わない)
+    valid_dates = [
+        r["date"] for n, r in results.items() if r and r.get("date") and TICKERS.get(n) != "BTC-USD"
+    ]
     if valid_dates:
         newest_date = max(valid_dates)
         for name, ticker in yf_tickers.items():
+            if ticker == "BTC-USD":
+                continue
             r = results.get(name)
             if r and r.get("date") and r["date"] < newest_date:
                 retry = _fetch_one_ticker(ticker)
-                if retry and retry.get("date") and retry["date"] >= newest_date:
+                if retry and retry.get("date") and retry["date"] > r["date"]:
                     results[name] = retry
 
     # 日本10年債は財務省から取得
