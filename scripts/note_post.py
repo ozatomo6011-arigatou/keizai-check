@@ -84,7 +84,7 @@ def capture() -> str:
 
         title_heading = app_frame.get_by_role("heading", name="毎日の経済チェック")
         title_box = title_heading.first.bounding_box() if title_heading.count() else None
-        absolute_top = title_box["y"] + scroll_y - 10 if title_box else 0
+        absolute_top = title_box["y"] + scroll_y - 30 if title_box else 0
         absolute_top = max(absolute_top, 0)
         print("DEBUG comment_heading count:", comment_heading.count(), "box:", comment_box, "scroll_y:", scroll_y, "absolute_y:", absolute_y, "absolute_top:", absolute_top)
 
