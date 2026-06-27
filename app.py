@@ -71,6 +71,22 @@ def fetch_jp10y() -> dict | None:
     return None
 
 
+def _fetch_one_ticker(ticker: str) -> dict | None:
+    """個別銘柄を取得し直す(株価系の日付ズレ対策の再取得用)"""
+    try:
+        prices = yf.download(ticker, period="2d", interval="1d", progress=False, auto_adjust=True)["Close"]
+        prices = prices.iloc[:, 0].dropna() if hasattr(prices, "columns") else prices.dropna()
+        if len(prices) == 0:
+            return None
+        ticker_date = str(prices.index[-1].date()) if hasattr(prices.index, "date") else None
+        if len(prices) >= 2:
+            prev, last = float(prices.iloc[-2]), float(prices.iloc[-1])
+            return {"value": last, "change": last - prev, "pct": (last - prev) / prev * 100, "date": ticker_date}
+        return {"value": float(prices.iloc[-1]), "change": None, "pct": None, "date": ticker_date}
+    except Exception:
+        return None
+
+
 @st.cache_data(ttl=300)
 def fetch_market_data():
     results = {}
@@ -98,6 +114,18 @@ def fetch_market_data():
                 results[name] = None
     except Exception as e:
         st.error(f"データ取得エラー: {e}")
+
+    # 銘柄ごとにYahoo側のデータ配信が遅れて日付がズレることがあるため、
+    # 他の銘柄より明らかに古い日付のものだけ個別に再取得する
+    valid_dates = [r["date"] for r in results.values() if r and r.get("date")]
+    if valid_dates:
+        newest_date = max(valid_dates)
+        for name, ticker in yf_tickers.items():
+            r = results.get(name)
+            if r and r.get("date") and r["date"] < newest_date:
+                retry = _fetch_one_ticker(ticker)
+                if retry and retry.get("date") and retry["date"] >= newest_date:
+                    results[name] = retry
 
     # 日本10年債は財務省から取得
     results["日本10年債(%)"] = fetch_jp10y()
