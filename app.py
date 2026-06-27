@@ -11,6 +11,7 @@ import os
 import re
 import requests
 import io
+import time
 from dotenv import load_dotenv
 
 load_dotenv()  # .envファイルから自動でAPIキーを読み込む
@@ -72,17 +73,24 @@ def fetch_jp10y() -> dict | None:
 
 
 def _fetch_one_ticker(ticker: str) -> dict | None:
-    """個別銘柄を取得し直す(株価系の日付ズレ対策の再取得用)"""
+    """個別銘柄を取得し直す(Yahoo側のCDNキャッシュによる日付ズレ対策)。
+    キャッシュを回避するため、タイムスタンプ付きで直接Yahooのchart APIを呼ぶ"""
     try:
-        prices = yf.download(ticker, period="2d", interval="1d", progress=False, auto_adjust=True)["Close"]
-        prices = prices.iloc[:, 0].dropna() if hasattr(prices, "columns") else prices.dropna()
-        if len(prices) == 0:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}"
+        params = {"interval": "1d", "range": "5d", "_": str(int(time.time() * 1000))}
+        headers = {"User-Agent": "Mozilla/5.0", "Cache-Control": "no-cache"}
+        r = requests.get(url, params=params, headers=headers, timeout=10)
+        result = r.json()["chart"]["result"][0]
+        timestamps = result["timestamp"]
+        closes = result["indicators"]["quote"][0]["close"]
+        pairs = [(ts, c) for ts, c in zip(timestamps, closes) if c is not None]
+        if len(pairs) == 0:
             return None
-        ticker_date = str(prices.index[-1].date()) if hasattr(prices.index, "date") else None
-        if len(prices) >= 2:
-            prev, last = float(prices.iloc[-2]), float(prices.iloc[-1])
+        ticker_date = str(datetime.fromtimestamp(pairs[-1][0], tz=timezone.utc).date())
+        if len(pairs) >= 2:
+            prev, last = pairs[-2][1], pairs[-1][1]
             return {"value": last, "change": last - prev, "pct": (last - prev) / prev * 100, "date": ticker_date}
-        return {"value": float(prices.iloc[-1]), "change": None, "pct": None, "date": ticker_date}
+        return {"value": pairs[-1][1], "change": None, "pct": None, "date": ticker_date}
     except Exception:
         return None
 
