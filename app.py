@@ -66,22 +66,23 @@ def fetch_jp10y() -> dict | None:
 def fetch_market_data():
     results = {}
     yf_tickers = {name: ticker for name, ticker in TICKERS.items() if ticker is not None}
-    data_date = None
     try:
         raw = yf.download(list(yf_tickers.values()), period="2d", interval="1d", progress=False, auto_adjust=True)
         close = raw["Close"] if "Close" in raw.columns else raw
-        if hasattr(close.index, "date"):
-            data_date = str(close.index[-1].date())
         for name, ticker in yf_tickers.items():
             try:
                 prices = close[ticker].dropna()
+                # 銘柄ごとに実際にデータがある最後の日付を使う
+                # (ビットコインは土日も動くため、共通の日付インデックスを使うと
+                # 株式・為替など平日のみ動く指標にも誤って今日の日付がついてしまう)
+                ticker_date = str(prices.index[-1].date()) if len(prices) and hasattr(prices.index, "date") else None
                 if len(prices) >= 2:
                     prev, last = float(prices.iloc[-2]), float(prices.iloc[-1])
                     change = last - prev
                     pct = change / prev * 100
-                    results[name] = {"value": last, "change": change, "pct": pct, "date": data_date}
+                    results[name] = {"value": last, "change": change, "pct": pct, "date": ticker_date}
                 elif len(prices) == 1:
-                    results[name] = {"value": float(prices.iloc[-1]), "change": None, "pct": None, "date": data_date}
+                    results[name] = {"value": float(prices.iloc[-1]), "change": None, "pct": None, "date": ticker_date}
                 else:
                     results[name] = None
             except Exception:
