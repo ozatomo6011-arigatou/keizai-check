@@ -40,6 +40,15 @@ TICKERS = {
 # ──────────────────────────────
 # データ取得
 # ──────────────────────────────
+def reiwa_to_seireki(date_str: str) -> str:
+    """財務省CSVの和暦表記(例: R8.6.25)を西暦(例: 2026-06-25)に変換する"""
+    m = re.match(r"R(\d+)\.(\d+)\.(\d+)", date_str.strip())
+    if not m:
+        return date_str
+    year = 2018 + int(m.group(1))
+    return f"{year}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+
+
 def fetch_jp10y() -> dict | None:
     """財務省から日本10年債利回りを取得"""
     try:
@@ -52,10 +61,10 @@ def fetch_jp10y() -> dict | None:
         if len(df) >= 2:
             last = float(df.iloc[-1].iloc[10])
             prev = float(df.iloc[-2].iloc[10])
-            date_str = str(df.iloc[-1].iloc[0])
+            date_str = reiwa_to_seireki(str(df.iloc[-1].iloc[0]))
             return {"value": last, "change": last - prev, "pct": (last - prev) / prev * 100, "date": date_str}
         elif len(df) == 1:
-            date_str = str(df.iloc[-1].iloc[0])
+            date_str = reiwa_to_seireki(str(df.iloc[-1].iloc[0]))
             return {"value": float(df.iloc[-1].iloc[10]), "change": None, "pct": None, "date": date_str}
     except Exception:
         pass
