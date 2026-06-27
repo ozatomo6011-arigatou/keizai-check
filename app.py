@@ -137,6 +137,7 @@ def fetch_market_data():
             r = results.get(name)
             if r and r.get("date") and r["date"] < newest_date:
                 retry = _fetch_one_ticker(ticker)
+                st.session_state.setdefault("_retry_debug", []).append((name, r.get("date"), retry))
                 if retry and retry.get("date") and retry["date"] > r["date"]:
                     results[name] = retry
 
@@ -338,6 +339,13 @@ with st.sidebar:
 # データ取得
 with st.spinner("市場データを取得中..."):
     data = fetch_market_data()
+
+if st.session_state.get("_retry_debug"):
+    with st.sidebar:
+        st.divider()
+        st.caption("🐛 再取得デバッグ")
+        for name, old_date, retry in st.session_state["_retry_debug"]:
+            st.caption(f"{name}: old={old_date} retry={retry}")
 
 # ──── 指標カードのフォントを縮小
 st.markdown("""
