@@ -1,7 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import anthropic
 import openpyxl
 from openpyxl import Workbook, load_workbook
@@ -263,7 +263,8 @@ def load_from_gsheet() -> pd.DataFrame | None:
 # UI
 # ──────────────────────────────
 st.markdown("##### 📊 毎日の経済チェック")
-st.caption(f"最終更新: {datetime.now().strftime('%Y年%m月%d日 %H:%M')}")
+JST = timezone(timedelta(hours=9))
+st.caption(f"最終更新: {datetime.now(JST).strftime('%Y年%m月%d日 %H:%M')}")
 
 # APIキー取得（Streamlit Secrets → 環境変数の順で読み込む）
 try:
