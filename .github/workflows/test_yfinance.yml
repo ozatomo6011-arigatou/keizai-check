@@ -20,6 +20,6 @@ jobs:
         run: |
           python -c "
           import yfinance as yf
-          df = yf.download(['^N225','^DJI','^GSPC'], period='5d', interval='1d', progress=False, auto_adjust=True)
+          df = yf.download(['^N225','^DJI','^GSPC','^IXIC','^SOX'], period='5d', interval='1d', progress=False, auto_adjust=True)
           print(df['Close'])
           "
