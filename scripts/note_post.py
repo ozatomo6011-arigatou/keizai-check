@@ -19,17 +19,31 @@ def capture() -> str:
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 620, "height": 2200})
-        page.goto(APP_URL, wait_until="networkidle", timeout=60000)
-        page.wait_for_timeout(8000)
-        try:
-            page.wait_for_load_state("networkidle", timeout=15000)
-        except Exception:
-            pass
+        page.goto(APP_URL, wait_until="domcontentloaded", timeout=60000)
+
+        # スリープ中のStreamlit Cloudアプリは起動に最大2分かかる。
+        # アプリ本体のタイトル見出しが出るまで最大120秒ポーリングで待つ。
+        print("DEBUG waiting for app to wake up...")
+        woke_up = False
+        for attempt in range(24):  # 5秒 × 24 = 最大120秒
+            page.wait_for_timeout(5000)
+            # iframeが存在しタイトルが見えていれば起動済み
+            app_frame_candidate = max(page.frames, key=lambda f: f.locator("[data-testid]").count())
+            title_check = app_frame_candidate.locator("text=毎日の経済チェック")
+            if title_check.count() > 0:
+                print(f"DEBUG app woke up at attempt {attempt + 1}")
+                woke_up = True
+                break
+            print(f"DEBUG attempt {attempt + 1}: still loading...")
+
+        if not woke_up:
+            raise RuntimeError("アプリが120秒待っても起動しませんでした")
+
+        # 起動直後に少し待って描画を安定させる
+        page.wait_for_timeout(3000)
 
         # Streamlit Cloudは実際のアプリ本体を内部のiframeで配信しているため、
         # そのフレームを探して操作・スタイル適用する必要がある
-        # 起床直後は一時的に複数フレームが存在することがあるため、testid要素が
-        # 最も多い(=最終的に表示される)フレームを選ぶ
         app_frame = max(page.frames, key=lambda f: f.locator("[data-testid]").count())
         print("DEBUG chosen frame url:", app_frame.url, "testid count:", app_frame.locator("[data-testid]").count())
 
