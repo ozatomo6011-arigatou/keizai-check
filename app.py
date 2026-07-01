@@ -405,11 +405,17 @@ if st.session_state.ai_comment:
     st.caption("※ 今日はすでに生成済みです")
 
     HASHTAGS = "\n\n#資産運用 #経済 #相場 #日米株式 #投資初心者 #毎日投稿 #市場まとめ"
-    note_text = "🤖 今日の市場まとめ\n\n" + parsed["summary"]
+    HR = "\n\n――――――――――――――――――\n\n"
+
+    def clean(text: str) -> str:
+        import re
+        return re.sub(r"\n*-{3,}\n*", "\n", text).strip()
+
+    note_text = "🤖 今日の市場まとめ\n\n" + clean(parsed["summary"])
     if parsed["question"]:
-        note_text += f"\n\n🙋 今日の市場まとめを読んで疑問に思ったこと\n{parsed['question']}"
+        note_text += HR + f"🙋 今日の市場まとめを読んで疑問に思ったこと\n{clean(parsed['question'])}"
         if parsed["answer"]:
-            note_text += f"\n\n💡 回答\n{parsed['answer']}"
+            note_text += HR + f"💡 回答\n{clean(parsed['answer'])}"
     note_text += HASHTAGS
     with st.expander("📝 note投稿用テキスト（コピーして使う）"):
         st.caption("上の画面全体をスクショして画像に、このテキストを本文に貼り付けてください")
