@@ -22,14 +22,26 @@ def capture() -> str:
         page.goto(APP_URL, wait_until="domcontentloaded", timeout=60000)
 
         # Streamlit Cloudのスリープ画面には「起こす」ボタンがある。
-        # 最初の数秒で検出してクリックする。
+        # 最初の数秒で検出してクリックする。ボタンテキストは英語/日本語どちらも試す。
         page.wait_for_timeout(5000)
-        for wake_btn_text in ["Yes, get this app back up!", "Wake up"]:
-            wake_btn = page.locator(f"text={wake_btn_text}")
-            if wake_btn.count() > 0:
-                print(f"DEBUG found sleep screen button: {wake_btn_text}, clicking...")
-                wake_btn.first.click()
-                break
+        page.screenshot(path="debug_initial.png")
+        print("DEBUG page title:", page.title())
+        print("DEBUG page text snippet:", page.inner_text("body")[:300])
+
+        def try_click_wake_button():
+            for selector in [
+                "text=Yes, get this app back up!",
+                "text=Wake up",
+                "button",  # どんなボタンでも押してみる
+            ]:
+                btns = page.locator(selector)
+                if btns.count() > 0:
+                    print(f"DEBUG clicking: {selector}")
+                    btns.first.click()
+                    return True
+            return False
+
+        try_click_wake_button()
 
         # アプリ本体のタイトル見出しが出るまで最大150秒ポーリングで待つ。
         print("DEBUG waiting for app to wake up...")
@@ -42,16 +54,12 @@ def capture() -> str:
                 print(f"DEBUG app woke up at attempt {attempt + 1}")
                 woke_up = True
                 break
-            # スリープ画面ボタンが再度出た場合も押す
-            for wake_btn_text in ["Yes, get this app back up!", "Wake up"]:
-                wake_btn = page.locator(f"text={wake_btn_text}")
-                if wake_btn.count() > 0:
-                    print(f"DEBUG clicking sleep button again at attempt {attempt + 1}")
-                    wake_btn.first.click()
-                    break
-            print(f"DEBUG attempt {attempt + 1}: still loading...")
+            if attempt % 3 == 0:  # 15秒ごとにボタンを再試行
+                try_click_wake_button()
+            print(f"DEBUG attempt {attempt + 1}: still loading... frames={len(page.frames)}")
 
         if not woke_up:
+            page.screenshot(path="debug_timeout.png")
             raise RuntimeError("アプリが150秒待っても起動しませんでした")
 
         # 起動直後に少し待って描画を安定させる
