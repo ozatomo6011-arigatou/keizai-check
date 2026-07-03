@@ -21,23 +21,38 @@ def capture() -> str:
         page = browser.new_page(viewport={"width": 620, "height": 2200})
         page.goto(APP_URL, wait_until="domcontentloaded", timeout=60000)
 
-        # スリープ中のStreamlit Cloudアプリは起動に最大2分かかる。
-        # アプリ本体のタイトル見出しが出るまで最大120秒ポーリングで待つ。
+        # Streamlit Cloudのスリープ画面には「起こす」ボタンがある。
+        # 最初の数秒で検出してクリックする。
+        page.wait_for_timeout(5000)
+        for wake_btn_text in ["Yes, get this app back up!", "Wake up"]:
+            wake_btn = page.locator(f"text={wake_btn_text}")
+            if wake_btn.count() > 0:
+                print(f"DEBUG found sleep screen button: {wake_btn_text}, clicking...")
+                wake_btn.first.click()
+                break
+
+        # アプリ本体のタイトル見出しが出るまで最大150秒ポーリングで待つ。
         print("DEBUG waiting for app to wake up...")
         woke_up = False
-        for attempt in range(24):  # 5秒 × 24 = 最大120秒
+        for attempt in range(30):  # 5秒 × 30 = 最大150秒
             page.wait_for_timeout(5000)
-            # iframeが存在しタイトルが見えていれば起動済み
             app_frame_candidate = max(page.frames, key=lambda f: f.locator("[data-testid]").count())
             title_check = app_frame_candidate.locator("text=毎日の経済チェック")
             if title_check.count() > 0:
                 print(f"DEBUG app woke up at attempt {attempt + 1}")
                 woke_up = True
                 break
+            # スリープ画面ボタンが再度出た場合も押す
+            for wake_btn_text in ["Yes, get this app back up!", "Wake up"]:
+                wake_btn = page.locator(f"text={wake_btn_text}")
+                if wake_btn.count() > 0:
+                    print(f"DEBUG clicking sleep button again at attempt {attempt + 1}")
+                    wake_btn.first.click()
+                    break
             print(f"DEBUG attempt {attempt + 1}: still loading...")
 
         if not woke_up:
-            raise RuntimeError("アプリが120秒待っても起動しませんでした")
+            raise RuntimeError("アプリが150秒待っても起動しませんでした")
 
         # 起動直後に少し待って描画を安定させる
         page.wait_for_timeout(3000)
