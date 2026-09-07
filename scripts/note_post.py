@@ -85,14 +85,17 @@ def capture() -> tuple[str, str]:
         expander = app_frame.locator("text=note投稿用テキスト")
 
         gen_button = app_frame.locator("button", has_text="AIコメントを生成")
+        print(f"DEBUG gen_button count: {gen_button.count()}, expander count (生成前): {expander.count()}")
         if gen_button.count() and gen_button.first.is_visible():
+            print("DEBUG clicking AIコメントを生成 ...")
             gen_button.first.click()
             try:
-                # Gemini側でリトライ（最大5回・待ち時間合計30秒程度）が発生することを
-                # 見込んで、生成完了を待つ時間に余裕を持たせる
                 expander.first.wait_for(state="visible", timeout=180000)
-            except Exception:
-                pass
+                print("DEBUG expander became visible (generation finished in time)")
+            except Exception as e:
+                print(f"DEBUG expander wait_for timed out/failed: {e}")
+        else:
+            print("DEBUG gen_button not visible/found (already generated, or app not ready yet)")
 
         save_button = app_frame.locator("button", has_text="Googleスプレッドシートに保存")
         if save_button.count() and save_button.first.is_visible():
@@ -138,6 +141,7 @@ def capture() -> tuple[str, str]:
 
         note_text = ""
         title_text = ""
+        print(f"DEBUG expander count (抽出直前): {expander.count()}")
         if expander.count():
             expander.first.click()
             page.wait_for_timeout(1000)
@@ -145,11 +149,21 @@ def capture() -> tuple[str, str]:
             # 前に、タイトル用のコードブロックが1つ追加で存在する。
             pre_blocks = app_frame.locator("pre")
             pre_count = pre_blocks.count()
+            print(f"DEBUG pre_count: {pre_count}")
             if pre_count >= 2:
                 title_text = pre_blocks.first.inner_text()
             code_block = pre_blocks.last
             if code_block.count():
                 note_text = code_block.inner_text()
+        else:
+            # expanderが見つからない場合、画面に何が表示されているか確認するため
+            # bodyのテキストを一部だけログに出す
+            try:
+                print("DEBUG app_frame body snippet:", app_frame.locator("body").inner_text()[:500])
+            except Exception as e:
+                print(f"DEBUG could not read body snippet: {e}")
+
+        print(f"DEBUG final note_text length: {len(note_text)}, title_text: {title_text!r}")
 
         browser.close()
         return note_text, title_text
