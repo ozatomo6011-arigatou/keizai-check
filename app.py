@@ -413,7 +413,7 @@ today_str = (now_jst if now_jst.hour >= 9 else now_jst - timedelta(days=1)).strf
 
 # 今日のコメントをスプレッドシートから読み込む
 if "ai_comment" not in st.session_state:
-    df_existing = load_from_gsheet()
+    df_existing = None  # TODO: 動作確認が終わったら load_from_gsheet() に戻す
     if df_existing is not None and today_str in df_existing.index:
         saved = df_existing.loc[today_str, "AIコメント"]
         st.session_state.ai_comment = saved if isinstance(saved, str) else ""
