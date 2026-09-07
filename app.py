@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta, timezone
-import anthropic
+from google import genai
 import openpyxl
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill, Font, Alignment
@@ -214,13 +214,12 @@ def generate_comment(data: dict, api_key: str) -> str:
 ・例2：経済チェック｜為替が動いた日は、何をチェックすればいい？
 ・上記の例と似た文体・長さにすること）"""
 
-    client = anthropic.Anthropic(api_key=api_key)
-    message = client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=600,
-        messages=[{"role": "user", "content": prompt}],
+    client = genai.Client(api_key=api_key)
+    response = client.models.generate_content(
+        model="gemini-3.5-flash",
+        contents=prompt,
     )
-    return message.content[0].text
+    return response.text
 
 
 def parse_ai_comment(text: str) -> dict:
@@ -330,10 +329,10 @@ st.caption(f"最終更新: {datetime.now(JST).strftime('%Y年%m月%d日 %H:%M')}
 
 # APIキー取得（Streamlit Secrets → 環境変数の順で読み込む）
 try:
-    api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
+    api_key = st.secrets.get("GEMINI_API_KEY", "")
 except Exception:
     api_key = ""
-api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
+api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
 
 # サイドバー
 with st.sidebar:
