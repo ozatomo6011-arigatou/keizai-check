@@ -172,7 +172,7 @@ def metric_card(name, info):
 
 
 # ──────────────────────────────
-# Claude AIコメント生成
+# Gemini AIコメント生成
 # ──────────────────────────────
 def generate_comment(data: dict, api_key: str) -> str:
     lines = []
@@ -449,7 +449,7 @@ if st.session_state.ai_comment:
         st.code(note_text, language=None)
 else:
     if st.button("💬 AIコメントを生成", type="primary", disabled=not api_key):
-        with st.spinner("Claudeが市場を分析中..."):
+        with st.spinner("Geminiが市場を分析中..."):
             try:
                 st.session_state.ai_comment = generate_comment(data, api_key)
                 st.rerun()
