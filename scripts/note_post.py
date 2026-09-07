@@ -88,7 +88,9 @@ def capture() -> tuple[str, str]:
         if gen_button.count() and gen_button.first.is_visible():
             gen_button.first.click()
             try:
-                expander.first.wait_for(state="visible", timeout=60000)
+                # Gemini側でリトライ（最大5回・待ち時間合計30秒程度）が発生することを
+                # 見込んで、生成完了を待つ時間に余裕を持たせる
+                expander.first.wait_for(state="visible", timeout=180000)
             except Exception:
                 pass
 
