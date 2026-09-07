@@ -3,6 +3,7 @@ import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta, timezone
 from google import genai
+from google.genai import types as genai_types
 import openpyxl
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill, Font, Alignment
@@ -216,25 +217,28 @@ def generate_comment(data: dict, api_key: str) -> str:
 ・例2：経済チェック｜為替が動いた日は、何をチェックすればいい？
 ・上記の例と似た文体・長さにすること）"""
 
-    client = genai.Client(api_key=api_key)
-
-    # 無料枠は一時的に混雑して503エラーになることがあるため、
-    # 少しずつ待ち時間を延ばしながら最大5回まで再試行する
-    # （それでもダメなら諦めてエラーを呼び出し元に伝える）
-    last_error = None
-    max_attempts = 5
-    for attempt in range(max_attempts):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.5-flash",
-                contents=prompt,
-            )
-            return response.text
-        except Exception as e:
-            last_error = e
-            if attempt < max_attempts - 1:
-                time.sleep(3 * (attempt + 1))  # 3秒→6秒→9秒→12秒と延ばす
-    raise last_error
+    # 無料枠は一時的に混雑して503エラーになることがあるため、SDK自体に
+    # 「1回のリクエストは20秒で打ち切る」「リトライは最大3回・待ち時間は短め」
+    # という上限を設定する（これがないとSDK内部のデフォルトのリトライ設定
+    # ＝最大5回・待ち時間の上限60秒がそのまま使われてしまい、
+    # 運が悪いと非常に長い待ち時間になってしまうため）
+    client = genai.Client(
+        api_key=api_key,
+        http_options=genai_types.HttpOptions(
+            timeout=20000,  # 1回のリクエストのタイムアウト（ミリ秒）
+            retry_options=genai_types.HttpRetryOptions(
+                attempts=3,       # 最初のリクエストを含めて最大3回
+                initial_delay=2,  # 最初のリトライまでの待ち時間（秒）
+                max_delay=10,     # リトライ間隔の上限（秒）
+                exp_base=2,
+            ),
+        ),
+    )
+    response = client.models.generate_content(
+        model="gemini-3.5-flash",
+        contents=prompt,
+    )
+    return response.text
 
 
 def parse_ai_comment(text: str) -> dict:
