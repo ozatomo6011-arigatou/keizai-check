@@ -219,7 +219,7 @@ def generate_comment(data: dict, api_key: str) -> str:
     client = anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=600,
+        max_tokens=1000,
         messages=[{"role": "user", "content": prompt}],
     )
     return message.content[0].text
