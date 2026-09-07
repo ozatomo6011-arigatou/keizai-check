@@ -436,7 +436,7 @@ if st.session_state.ai_comment:
         import re
         return re.sub(r"\n*-{3,}\n*", "\n", text).strip()
 
-    note_text = "🤖 今日の市場まとめ\n\n" + clean(parsed["summary"])
+    note_text = "🤖 今日の市場まとめ\n" + clean(parsed["summary"])
     if parsed["question"]:
         note_text += HR + f"🙋 今日の市場まとめを読んで疑問に思ったこと\n{clean(parsed['question'])}"
         if parsed["answer"]:
