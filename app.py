@@ -2,8 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 from datetime import datetime, timedelta, timezone
-from google import genai
-from google.genai import types as genai_types
+import anthropic
 import openpyxl
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import PatternFill, Font, Alignment
@@ -173,7 +172,7 @@ def metric_card(name, info):
 
 
 # ──────────────────────────────
-# Gemini AIコメント生成
+# Claude AIコメント生成
 # ──────────────────────────────
 def generate_comment(data: dict, api_key: str) -> str:
     lines = []
@@ -217,28 +216,13 @@ def generate_comment(data: dict, api_key: str) -> str:
 ・例2：経済チェック｜為替が動いた日は、何をチェックすればいい？
 ・上記の例と似た文体・長さにすること）"""
 
-    # 無料枠は一時的に混雑して503エラーになることがあるため、SDK自体に
-    # 「1回のリクエストは20秒で打ち切る」「リトライは最大3回・待ち時間は短め」
-    # という上限を設定する（これがないとSDK内部のデフォルトのリトライ設定
-    # ＝最大5回・待ち時間の上限60秒がそのまま使われてしまい、
-    # 運が悪いと非常に長い待ち時間になってしまうため）
-    client = genai.Client(
-        api_key=api_key,
-        http_options=genai_types.HttpOptions(
-            timeout=20000,  # 1回のリクエストのタイムアウト（ミリ秒）
-            retry_options=genai_types.HttpRetryOptions(
-                attempts=3,       # 最初のリクエストを含めて最大3回
-                initial_delay=2,  # 最初のリトライまでの待ち時間（秒）
-                max_delay=10,     # リトライ間隔の上限（秒）
-                exp_base=2,
-            ),
-        ),
+    client = anthropic.Anthropic(api_key=api_key)
+    message = client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=600,
+        messages=[{"role": "user", "content": prompt}],
     )
-    response = client.models.generate_content(
-        model="gemini-3.5-flash",
-        contents=prompt,
-    )
-    return response.text
+    return message.content[0].text
 
 
 def parse_ai_comment(text: str) -> dict:
@@ -348,10 +332,10 @@ st.caption(f"最終更新: {datetime.now(JST).strftime('%Y年%m月%d日 %H:%M')}
 
 # APIキー取得（Streamlit Secrets → 環境変数の順で読み込む）
 try:
-    api_key = st.secrets.get("GEMINI_API_KEY", "")
+    api_key = st.secrets.get("ANTHROPIC_API_KEY", "")
 except Exception:
     api_key = ""
-api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
+api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "")
 
 # サイドバー
 with st.sidebar:
@@ -413,7 +397,7 @@ today_str = (now_jst if now_jst.hour >= 9 else now_jst - timedelta(days=1)).strf
 
 # 今日のコメントをスプレッドシートから読み込む
 if "ai_comment" not in st.session_state:
-    df_existing = None  # TODO: 動作確認が終わったら load_from_gsheet() に戻す
+    df_existing = load_from_gsheet()
     if df_existing is not None and today_str in df_existing.index:
         saved = df_existing.loc[today_str, "AIコメント"]
         st.session_state.ai_comment = saved if isinstance(saved, str) else ""
@@ -468,7 +452,7 @@ if st.session_state.ai_comment:
         st.code(note_text, language=None)
 else:
     if st.button("💬 AIコメントを生成", type="primary", disabled=not api_key):
-        with st.spinner("Geminiが市場を分析中..."):
+        with st.spinner("Claudeが市場を分析中..."):
             try:
                 st.session_state.ai_comment = generate_comment(data, api_key)
                 st.rerun()
