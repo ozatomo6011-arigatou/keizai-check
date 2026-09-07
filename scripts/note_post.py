@@ -15,7 +15,7 @@ ICLOUD_APP_PASSWORD = os.environ["ICLOUD_APP_PASSWORD"]
 SCREENSHOT_PATH = Path("note_screenshot.png")
 
 
-def capture() -> str:
+def capture() -> tuple[str, str]:
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 620, "height": 2200})
@@ -135,23 +135,34 @@ def capture() -> str:
             print("DEBUG could not crop, keeping full_page screenshot")
 
         note_text = ""
+        title_text = ""
         if expander.count():
             expander.first.click()
             page.wait_for_timeout(1000)
-            code_block = app_frame.locator("pre").last
+            # 記事タイトル案が生成されている場合、「note投稿用テキスト」のコードブロックより
+            # 前に、タイトル用のコードブロックが1つ追加で存在する。
+            pre_blocks = app_frame.locator("pre")
+            pre_count = pre_blocks.count()
+            if pre_count >= 2:
+                title_text = pre_blocks.first.inner_text()
+            code_block = pre_blocks.last
             if code_block.count():
                 note_text = code_block.inner_text()
 
         browser.close()
-        return note_text
+        return note_text, title_text
 
 
-def send_email(note_text: str):
+def send_email(note_text: str, title_text: str = ""):
     msg = MIMEMultipart()
     msg["Subject"] = "毎日の経済チェック - note投稿用"
     msg["From"] = ICLOUD_EMAIL
     msg["To"] = ICLOUD_EMAIL
-    msg.attach(MIMEText(note_text or "（note用テキストを取得できませんでした。アプリを確認してください）", "plain"))
+
+    body = note_text or "（note用テキストを取得できませんでした。アプリを確認してください）"
+    if title_text:
+        body = f"【タイトル案】\n{title_text}\n\n{body}"
+    msg.attach(MIMEText(body, "plain"))
 
     with open(SCREENSHOT_PATH, "rb") as f:
         img = MIMEImage(f.read())
@@ -165,5 +176,5 @@ def send_email(note_text: str):
 
 
 if __name__ == "__main__":
-    text = capture()
-    send_email(text)
+    text, title = capture()
+    send_email(text, title)

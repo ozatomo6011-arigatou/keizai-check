@@ -202,7 +202,17 @@ def generate_comment(data: dict, api_key: str) -> str:
 （メンター面談で聞くと良さそうなポイントを1つ、1文で）
 
 【質問への回答】
-（上記の質問に対する、あなた自身の回答・考え方を150字程度で。小学生にもわかるやさしい言葉で説明してください）"""
+（上記の質問に対する、あなた自身の回答・考え方を150字程度で。小学生にもわかるやさしい言葉で説明してください）
+
+【記事タイトル】
+（note記事のタイトルを1行、30〜40字程度で。以下のルールに必ず従うこと。
+・「経済チェック｜」から始める
+・今日の市場データの中でいちばん特徴的な指標や動きをキーワードとして入れる（検索されやすくするため）
+・そのキーワードに続けて、投資初心者が抱きそうな疑問や不安をそのまま自然な文章で入れる（共感されやすくするため）
+・「【用語】とは？」という体裁である必要はなく、自然な日本語の一文でよい
+・例1：経済チェック｜今日の日経平均と、初心者が見るべき1つの指標
+・例2：経済チェック｜為替が動いた日は、何をチェックすればいい？
+・上記の例と似た文体・長さにすること）"""
 
     client = anthropic.Anthropic(api_key=api_key)
     message = client.messages.create(
@@ -215,12 +225,13 @@ def generate_comment(data: dict, api_key: str) -> str:
 
 def parse_ai_comment(text: str) -> dict:
     """AIコメントを見出しごとに分割する。形式に従っていない場合はsummaryに全文を入れる。"""
-    sections = {"summary": "", "question": "", "answer": ""}
+    sections = {"summary": "", "question": "", "answer": "", "title": ""}
     heading_map = {
         "まとめ": "summary",
         "注目ポイント": "summary",
         "今日の市場まとめを読んで疑問に思ったこと": "question",
         "質問への回答": "answer",
+        "記事タイトル": "title",
     }
     parts = re.split(r"【(.+?)】", text)
     if len(parts) <= 1:
@@ -393,6 +404,9 @@ if "ai_comment" not in st.session_state:
 
 if st.session_state.ai_comment:
     parsed = parse_ai_comment(st.session_state.ai_comment)
+    if parsed["title"]:
+        st.markdown(f"**📰 記事タイトル案：** {parsed['title']}")
+        st.code(parsed["title"], language=None)
     if parsed["summary"]:
         st.info(parsed["summary"])
     if parsed["question"]:
@@ -406,6 +420,17 @@ if st.session_state.ai_comment:
 
     HASHTAGS = "\n\n#資産運用 #経済 #相場 #日米株式 #投資初心者 #毎日投稿 #市場まとめ"
     HR = "\n\n"
+    CLOSING = (
+        "\n\n─────────\n"
+        "明日も経済チェック、続けます📊\n"
+        "「わかった気になれる」を目指して更新中。\n"
+        "フォローして一緒に学びませんか？"
+    )
+    WEEKEND_EXTRA = (
+        "\n\n「もっと基礎から知りたい」という方は、Kindleもどうぞ📚\n"
+        "💰ゆる節約術 → https://www.amazon.co.jp/dp/B0H17RH6CY\n"
+        "📈NISA入門 → https://www.amazon.co.jp/dp/B0GYLPTT1B"
+    )
 
     def clean(text: str) -> str:
         import re
@@ -416,6 +441,9 @@ if st.session_state.ai_comment:
         note_text += HR + f"🙋 今日の市場まとめを読んで疑問に思ったこと\n{clean(parsed['question'])}"
         if parsed["answer"]:
             note_text += HR + f"💡 回答\n{clean(parsed['answer'])}"
+    note_text += CLOSING
+    if now_jst.weekday() >= 5:  # 5=土曜, 6=日曜だけKindle告知を追加
+        note_text += WEEKEND_EXTRA
     note_text += HASHTAGS
     with st.expander("📝 note投稿用テキスト（コピーして使う）"):
         st.caption("上の画面全体をスクショして画像に、このテキストを本文に貼り付けてください")
