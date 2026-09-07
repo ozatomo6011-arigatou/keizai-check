@@ -215,11 +215,24 @@ def generate_comment(data: dict, api_key: str) -> str:
 ・上記の例と似た文体・長さにすること）"""
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-3.5-flash",
-        contents=prompt,
-    )
-    return response.text
+
+    # 無料枠は一時的に混雑して503エラーになることがあるため、
+    # 少しずつ待ち時間を延ばしながら最大5回まで再試行する
+    # （それでもダメなら諦めてエラーを呼び出し元に伝える）
+    last_error = None
+    max_attempts = 5
+    for attempt in range(max_attempts):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.5-flash",
+                contents=prompt,
+            )
+            return response.text
+        except Exception as e:
+            last_error = e
+            if attempt < max_attempts - 1:
+                time.sleep(3 * (attempt + 1))  # 3秒→6秒→9秒→12秒と延ばす
+    raise last_error
 
 
 def parse_ai_comment(text: str) -> dict:
