@@ -43,10 +43,10 @@ def capture() -> tuple[str, str]:
 
         try_click_wake_button()
 
-        # アプリ本体のタイトル見出しが出るまで最大150秒ポーリングで待つ。
+        # アプリ本体のタイトル見出しが出るまで最大300秒ポーリングで待つ。
         print("DEBUG waiting for app to wake up...")
         woke_up = False
-        for attempt in range(30):  # 5秒 × 30 = 最大150秒
+        for attempt in range(60):  # 5秒 × 60 = 最大300秒
             page.wait_for_timeout(5000)
             app_frame_candidate = max(page.frames, key=lambda f: f.locator("[data-testid]").count())
             title_check = app_frame_candidate.locator("text=毎日の経済チェック")
@@ -60,7 +60,7 @@ def capture() -> tuple[str, str]:
 
         if not woke_up:
             page.screenshot(path="debug_timeout.png")
-            raise RuntimeError("アプリが150秒待っても起動しませんでした")
+            raise RuntimeError("アプリが300秒待っても起動しませんでした")
 
         # 起動直後に少し待って描画を安定させる
         page.wait_for_timeout(3000)
